@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(GitIdentityStudio VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
@@ -16,12 +16,12 @@ include(CTest)
 
 qt_add_executable(GitIdentityStudio WIN32
     src/main.cpp
-    src/mainwindow.cpp
-    src/mainwindow.h
-    src/editcommitdialog.cpp
-    src/editcommitdialog.h
-    src/commitrewriter.cpp
-    src/commitrewriter.h
+    src/main_window.cpp
+    src/main_window.h
+    src/edit_commit_dialog.cpp
+    src/edit_commit_dialog.h
+    src/commit_rewriter.cpp
+    src/commit_rewriter.h
     ui/mainwindow.ui
     ui/editcommitdialog.ui
     resources/resources.qrc
@@ -40,9 +40,9 @@ set_target_properties(GitIdentityStudio PROPERTIES
 
 if(BUILD_TESTING)
     qt_add_executable(CommitRewriterIntegrationTest
-        tests/commitrewriter_integration.cpp
-        src/commitrewriter.cpp
-        src/commitrewriter.h
+        tests/commit_rewriter_integration.cpp
+        src/commit_rewriter.cpp
+        src/commit_rewriter.h
     )
     target_link_libraries(CommitRewriterIntegrationTest PRIVATE Qt6::Core)
     target_include_directories(CommitRewriterIntegrationTest PRIVATE src)
