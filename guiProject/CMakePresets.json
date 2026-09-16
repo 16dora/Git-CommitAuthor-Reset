@@ -1,0 +1,42 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "qt6-mingw-debug",
+      "displayName": "Qt 6.11.1 MinGW Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt6-mingw-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "E:/Qt/Qt6/6.11.1/mingw_64",
+        "CMAKE_CXX_COMPILER": "E:/Qt/Qt6/Tools/mingw1310_64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "E:/Qt/Qt6/Tools/Ninja/ninja.exe"
+      }
+    },
+    {
+      "name": "qt6-mingw-release",
+      "displayName": "Qt 6.11.1 MinGW Release",
+      "inherits": "qt6-mingw-debug",
+      "binaryDir": "${sourceDir}/build/qt6-mingw-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-debug",
+      "configurePreset": "qt6-mingw-debug"
+    },
+    {
+      "name": "build-release",
+      "configurePreset": "qt6-mingw-release"
+    }
+  ]
+}
+

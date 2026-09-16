@@ -1,0 +1,111 @@
+* {
+    font-family: "Microsoft YaHei UI";
+}
+
+QMainWindow,
+QWidget#content {
+    background: #F4F6FA;
+    color: #1A2030;
+}
+
+QLabel#pageTitle { font-size: 25px; font-weight: 750; color: #171B27; }
+QLabel[muted="true"] { color: #8A91A1; font-size: 12px; }
+
+QLabel#repositoryBadge {
+    border-radius: 13px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+QLabel#repositoryBadge[valid="true"] { color: #187A51; background: #E6F8EF; }
+QLabel#repositoryBadge[valid="false"] { color: #A16318; background: #FFF2DD; }
+QFrame[card="true"] { background: #FFFFFF; border: 1px solid #E6E9F0; border-radius: 11px; }
+QLabel#folderMark { color: #6658E8; background: #EFEDFF; border-radius: 8px; font-size: 21px; }
+QLabel#repoIcon { color: #6658E8; background: #EFEDFF; border-radius: 10px; font-size: 22px; }
+QLabel#repoNameLabel { color: #242938; font-size: 14px; font-weight: 700; }
+
+QLabel[statBadge="true"] {
+    border-radius: 9px;
+    min-width: 36px;
+    min-height: 36px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+QLabel[statBadge="true"][accent="purple"] { color: #6658E8; background: #EFEDFF; }
+QLabel[statBadge="true"][accent="green"] { color: #159263; background: #E8F8F1; }
+QLabel[statBadge="true"][accent="orange"] { color: #D57A24; background: #FFF2E2; }
+QLabel#commitCountLabel, QLabel#authorCountLabel, QLabel#branchCountLabel { color: #202432; font-size: 21px; font-weight: 750; }
+QLabel[statCaption="true"] { color: #8B91A0; font-size: 11px; }
+
+QLineEdit,
+QComboBox {
+    background: #FFFFFF;
+    border: 1px solid #DDE1EA;
+    border-radius: 7px;
+    min-height: 34px;
+    padding: 0 10px;
+    color: #333847;
+    selection-background-color: #6658E8;
+}
+
+QLineEdit:focus, QComboBox:focus { border: 1px solid #776AE9; }
+QLineEdit#searchEdit { background: #F7F8FB; min-height: 32px; }
+QPushButton { min-height: 34px; border-radius: 7px; padding: 0 14px; }
+QPushButton[role="primary"] { color: white; background: #6658E8; border: 1px solid #6658E8; font-weight: 650; }
+QPushButton[role="primary"]:hover { background: #5749D8; }
+QPushButton[role="secondary"] { color: #575D6C; background: white; border: 1px solid #DCE0E8; font-weight: 600; }
+QPushButton[role="secondary"]:hover { color: #5B4DD8; border-color: #8C82EA; background: #F8F7FF; }
+QPushButton:disabled { color: #AEB3BE; background: #F2F3F6; border-color: #E3E5EA; }
+QPushButton#editCommitButton {
+    color: #5746D9;
+    background: #EEEBFF;
+    border: 1px solid #8B7FF0;
+    font-weight: 700;
+}
+QPushButton#editCommitButton:hover {
+    color: #FFFFFF;
+    background: #6658E8;
+    border-color: #6658E8;
+}
+QPushButton#editCommitButton:pressed {
+    color: #FFFFFF;
+    background: #5142C7;
+    border-color: #5142C7;
+}
+QPushButton#editCommitButton:disabled {
+    color: #9992C6;
+    background: #F2F0FC;
+    border-color: #D5D0F2;
+}
+QLabel[sectionTitle="true"] { color: #252A37; font-size: 15px; font-weight: 700; }
+QFrame[divider="true"] { background: #EAECF1; border: none; }
+
+QTreeWidget {
+    background: #FFFFFF;
+    alternate-background-color: #FAFBFD;
+    border: none;
+    outline: none;
+    color: #3C4252;
+}
+
+QTreeWidget::item { min-height: 37px; border-bottom: 1px solid #F0F1F4; padding: 2px; }
+QTreeWidget::item:selected { background: #EFEDFF; color: #4F43BF; }
+QHeaderView::section { background: #F8F9FB; color: #8B91A0; border: none; border-bottom: 1px solid #E8EAF0; padding: 9px 7px; font-size: 11px; font-weight: 650; }
+QTabWidget::pane { border: none; background: white; }
+QTabBar::tab { color: #8A90A0; background: white; border: none; padding: 13px 15px 10px; }
+QTabBar::tab:selected { color: #5C4CD8; font-weight: 700; border-bottom: 2px solid #6658E8; }
+QLabel#detailSubject { color: #252A37; font-size: 15px; font-weight: 700; }
+QLabel[detailValue="true"] { color: #383E4D; font-size: 12px; }
+
+QFrame#actionCard { background: #29263F; border: none; border-radius: 11px; }
+QLabel#actionTitle { color: white; font-size: 14px; font-weight: 700; }
+QLabel#actionText { color: #BCB8D0; font-size: 11px; }
+QPushButton#batchRewriteButton { color: white; background: #7667F0; border: none; font-weight: 700; }
+QPushButton#batchRewriteButton:hover { background: #897CF4; }
+QPushButton#batchRewriteButton:disabled { color: #8F8AAB; background: #3A3651; }
+QSplitter::handle { background: transparent; width: 12px; }
+QScrollBar:vertical { width: 10px; background: transparent; }
+QScrollBar::handle:vertical { background: #D6D9E2; border-radius: 5px; min-height: 30px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }

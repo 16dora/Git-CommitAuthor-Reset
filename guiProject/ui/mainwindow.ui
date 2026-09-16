@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1460</width><height>920</height></rect>
+  </property>
+  <property name="minimumSize">
+   <size><width>1050</width><height>720</height></size>
+  </property>
+  <property name="windowTitle">
+   <string>Git Identity Studio · 提交身份管理</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QHBoxLayout" name="rootLayout">
+    <property name="spacing"><number>0</number></property>
+    <property name="leftMargin"><number>0</number></property>
+    <property name="topMargin"><number>0</number></property>
+    <property name="rightMargin"><number>0</number></property>
+    <property name="bottomMargin"><number>0</number></property>
+    <item>
+     <widget class="QWidget" name="content">
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing"><number>16</number></property>
+       <property name="leftMargin"><number>30</number></property><property name="topMargin"><number>24</number></property><property name="rightMargin"><number>30</number></property><property name="bottomMargin"><number>24</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="headingRow">
+         <item>
+          <layout class="QVBoxLayout" name="headingTextLayout">
+           <property name="spacing"><number>3</number></property>
+           <item><widget class="QLabel" name="pageTitle"><property name="text"><string>仓库概览</string></property></widget></item>
+           <item><widget class="QLabel" name="pageSubtitle"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>检查提交历史，并规划作者与提交者身份的安全修正</string></property></widget></item>
+          </layout>
+         </item>
+         <item><spacer name="headingStretch"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+         <item><widget class="QLabel" name="repositoryBadge"><property name="valid" stdset="0"><bool>false</bool></property><property name="maximumSize"><size><width>16777215</width><height>38</height></size></property><property name="text"><string>●  等待选择仓库</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="pickerCard">
+         <property name="card" stdset="0"><bool>true</bool></property>
+         <property name="maximumSize"><size><width>16777215</width><height>66</height></size></property>
+         <layout class="QHBoxLayout" name="pickerLayout">
+          <property name="spacing"><number>10</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>14</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>14</number></property>
+          <item><widget class="QLabel" name="folderMark"><property name="minimumSize"><size><width>34</width><height>34</height></size></property><property name="maximumSize"><size><width>34</width><height>34</height></size></property><property name="text"><string>⌂</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item>
+          <item><widget class="QLineEdit" name="pathEdit"><property name="placeholderText"><string>选择包含 .git 的仓库目录</string></property></widget></item>
+          <item><widget class="QPushButton" name="browseButton"><property name="role" stdset="0"><string>secondary</string></property><property name="text"><string>选择目录</string></property></widget></item>
+          <item><widget class="QLabel" name="branchCaption"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>分支</string></property></widget></item>
+          <item><widget class="QComboBox" name="branchCombo"><property name="enabled"><bool>false</bool></property><property name="minimumSize"><size><width>150</width><height>0</height></size></property></widget></item>
+          <item><widget class="QPushButton" name="reloadButton"><property name="enabled"><bool>false</bool></property><property name="role" stdset="0"><string>primary</string></property><property name="text"><string>重新加载</string></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="summaryRow">
+         <property name="spacing"><number>12</number></property>
+         <item>
+          <widget class="QFrame" name="repoCard">
+           <property name="card" stdset="0"><bool>true</bool></property>
+           <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>2</horstretch><verstretch>0</verstretch></sizepolicy></property>
+           <property name="maximumSize"><size><width>16777215</width><height>76</height></size></property>
+           <layout class="QHBoxLayout" name="repoLayout">
+            <property name="leftMargin"><number>18</number></property><property name="topMargin"><number>13</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>13</number></property>
+            <item><widget class="QLabel" name="repoIcon"><property name="minimumSize"><size><width>42</width><height>42</height></size></property><property name="maximumSize"><size><width>42</width><height>42</height></size></property><property name="text"><string>⌘</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item>
+            <item><layout class="QVBoxLayout" name="repoTextLayout"><property name="spacing"><number>2</number></property><item><widget class="QLabel" name="repoNameLabel"><property name="text"><string>尚未选择仓库</string></property></widget></item><item><widget class="QLabel" name="repoMetaLabel"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>等待加载本地 Git 数据</string></property></widget></item></layout></item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="commitStatCard"><property name="card" stdset="0"><bool>true</bool></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>1</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="maximumSize"><size><width>16777215</width><height>76</height></size></property><layout class="QHBoxLayout" name="commitStatLayout"><property name="leftMargin"><number>15</number></property><property name="topMargin"><number>12</number></property><property name="rightMargin"><number>15</number></property><property name="bottomMargin"><number>12</number></property><item><widget class="QLabel" name="commitBadge"><property name="statBadge" stdset="0"><bool>true</bool></property><property name="accent" stdset="0"><string>purple</string></property><property name="minimumSize"><size><width>36</width><height>36</height></size></property><property name="maximumSize"><size><width>36</width><height>36</height></size></property><property name="text"><string>C</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item><item><layout class="QVBoxLayout" name="commitStatText"><property name="spacing"><number>0</number></property><item><widget class="QLabel" name="commitCountLabel"><property name="text"><string>—</string></property></widget></item><item><widget class="QLabel" name="commitStatCaption"><property name="statCaption" stdset="0"><bool>true</bool></property><property name="text"><string>提交记录</string></property></widget></item></layout></item></layout></widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="authorStatCard"><property name="card" stdset="0"><bool>true</bool></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>1</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="maximumSize"><size><width>16777215</width><height>76</height></size></property><layout class="QHBoxLayout" name="authorStatLayout"><property name="leftMargin"><number>15</number></property><property name="topMargin"><number>12</number></property><property name="rightMargin"><number>15</number></property><property name="bottomMargin"><number>12</number></property><item><widget class="QLabel" name="authorBadge"><property name="statBadge" stdset="0"><bool>true</bool></property><property name="accent" stdset="0"><string>green</string></property><property name="minimumSize"><size><width>36</width><height>36</height></size></property><property name="maximumSize"><size><width>36</width><height>36</height></size></property><property name="text"><string>A</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item><item><layout class="QVBoxLayout" name="authorStatText"><property name="spacing"><number>0</number></property><item><widget class="QLabel" name="authorCountLabel"><property name="text"><string>—</string></property></widget></item><item><widget class="QLabel" name="authorStatCaption"><property name="statCaption" stdset="0"><bool>true</bool></property><property name="text"><string>独立作者</string></property></widget></item></layout></item></layout></widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="branchStatCard"><property name="card" stdset="0"><bool>true</bool></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>1</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="maximumSize"><size><width>16777215</width><height>76</height></size></property><layout class="QHBoxLayout" name="branchStatLayout"><property name="leftMargin"><number>15</number></property><property name="topMargin"><number>12</number></property><property name="rightMargin"><number>15</number></property><property name="bottomMargin"><number>12</number></property><item><widget class="QLabel" name="branchBadge"><property name="statBadge" stdset="0"><bool>true</bool></property><property name="accent" stdset="0"><string>orange</string></property><property name="minimumSize"><size><width>36</width><height>36</height></size></property><property name="maximumSize"><size><width>36</width><height>36</height></size></property><property name="text"><string>B</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item><item><layout class="QVBoxLayout" name="branchStatText"><property name="spacing"><number>0</number></property><item><widget class="QLabel" name="branchCountLabel"><property name="text"><string>—</string></property></widget></item><item><widget class="QLabel" name="branchStatCaption"><property name="statCaption" stdset="0"><bool>true</bool></property><property name="text"><string>本地分支</string></property></widget></item></layout></item></layout></widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QSplitter" name="bodySplitter">
+         <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>1</verstretch></sizepolicy></property>
+         <property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property>
+         <property name="childrenCollapsible"><bool>false</bool></property>
+         <widget class="QFrame" name="historyCard">
+          <property name="card" stdset="0"><bool>true</bool></property>
+          <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>7</horstretch><verstretch>0</verstretch></sizepolicy></property>
+          <layout class="QVBoxLayout" name="historyLayout">
+           <property name="spacing"><number>0</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QWidget" name="historyToolbar">
+             <layout class="QHBoxLayout" name="historyToolbarLayout">
+              <property name="leftMargin"><number>18</number></property><property name="topMargin"><number>15</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>13</number></property>
+              <item><widget class="QLabel" name="historyTitle"><property name="sectionTitle" stdset="0"><bool>true</bool></property><property name="text"><string>提交历史</string></property></widget></item>
+              <item><spacer name="historyToolbarStretch"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+              <item><widget class="QLineEdit" name="searchEdit"><property name="maximumSize"><size><width>310</width><height>16777215</height></size></property><property name="placeholderText"><string>搜索哈希、说明、作者或邮箱</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
+             </layout>
+            </widget>
+           </item>
+           <item><widget class="QFrame" name="historyDivider"><property name="divider" stdset="0"><bool>true</bool></property><property name="minimumSize"><size><width>0</width><height>1</height></size></property><property name="maximumSize"><size><width>16777215</width><height>1</height></size></property><property name="frameShape"><enum>QFrame::Shape::HLine</enum></property></widget></item>
+           <item>
+            <widget class="QTreeWidget" name="commitTree">
+             <property name="alternatingRowColors"><bool>true</bool></property><property name="rootIsDecorated"><bool>false</bool></property><property name="uniformRowHeights"><bool>true</bool></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property><property name="sortingEnabled"><bool>true</bool></property>
+             <column><property name="text"><string>提交</string></property></column>
+             <column><property name="text"><string>说明</string></property></column>
+             <column><property name="text"><string>作者</string></property></column>
+             <column><property name="text"><string>邮箱</string></property></column>
+             <column><property name="text"><string>日期</string></property></column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="rightPanel">
+          <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>3</horstretch><verstretch>0</verstretch></sizepolicy></property>
+          <layout class="QVBoxLayout" name="rightLayout">
+           <property name="spacing"><number>12</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QFrame" name="tabsCard">
+             <property name="card" stdset="0"><bool>true</bool></property>
+             <layout class="QVBoxLayout" name="tabsCardLayout"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+              <item>
+               <widget class="QTabWidget" name="detailsTabs">
+                <property name="documentMode"><bool>true</bool></property>
+                <widget class="QWidget" name="detailPage">
+                 <attribute name="title"><string>提交详情</string></attribute>
+                 <layout class="QVBoxLayout" name="detailPageLayout">
+                  <property name="spacing"><number>0</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+                  <item>
+                   <widget class="QScrollArea" name="detailScrollArea">
+                    <property name="frameShape"><enum>QFrame::Shape::NoFrame</enum></property>
+                    <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum></property>
+                    <property name="verticalScrollBarPolicy"><enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum></property>
+                    <property name="widgetResizable"><bool>true</bool></property>
+                    <widget class="QWidget" name="detailScrollContents">
+                     <property name="geometry"><rect><x>0</x><y>0</y><width>380</width><height>100</height></rect></property>
+                     <layout class="QVBoxLayout" name="detailLayout">
+                      <property name="spacing"><number>7</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>8</number></property>
+                      <item><widget class="QLabel" name="detailSubject"><property name="text"><string>选择一条提交记录</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextInteractionFlag::TextSelectableByMouse</set></property></widget></item>
+                      <item><widget class="QLabel" name="detailHash"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>—</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextInteractionFlag::TextSelectableByMouse</set></property></widget></item>
+                      <item><spacer name="detailTopSpace"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>5</height></size></property></spacer></item>
+                      <item><widget class="QFrame" name="detailDivider"><property name="divider" stdset="0"><bool>true</bool></property><property name="minimumSize"><size><width>0</width><height>1</height></size></property><property name="maximumSize"><size><width>16777215</width><height>1</height></size></property><property name="frameShape"><enum>QFrame::Shape::HLine</enum></property></widget></item>
+                      <item><widget class="QLabel" name="authorIdentityCaption"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>作者身份</string></property></widget></item>
+                      <item><widget class="QLabel" name="detailAuthor"><property name="detailValue" stdset="0"><bool>true</bool></property><property name="text"><string>—</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextInteractionFlag::TextSelectableByMouse</set></property></widget></item>
+                      <item><widget class="QLabel" name="committerIdentityCaption"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>提交者身份</string></property></widget></item>
+                      <item><widget class="QLabel" name="detailCommitter"><property name="detailValue" stdset="0"><bool>true</bool></property><property name="text"><string>—</string></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextInteractionFlag::TextSelectableByMouse</set></property></widget></item>
+                      <item><widget class="QLabel" name="dateCaption"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>提交时间</string></property></widget></item>
+                      <item><widget class="QLabel" name="detailDate"><property name="detailValue" stdset="0"><bool>true</bool></property><property name="text"><string>—</string></property><property name="textInteractionFlags"><set>Qt::TextInteractionFlag::TextSelectableByMouse</set></property></widget></item>
+                     </layout>
+                    </widget>
+                   </widget>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="detailActionLayout">
+                    <property name="leftMargin"><number>18</number></property><property name="topMargin"><number>8</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>18</number></property>
+                    <item><widget class="QPushButton" name="editCommitButton"><property name="enabled"><bool>false</bool></property><property name="role" stdset="0"><string>secondary</string></property><property name="text"><string>修改此提交身份</string></property></widget></item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="authorPage">
+                 <attribute name="title"><string>作者汇总</string></attribute>
+                 <layout class="QVBoxLayout" name="authorLayout">
+                  <property name="spacing"><number>10</number></property><property name="leftMargin"><number>12</number></property><property name="topMargin"><number>12</number></property><property name="rightMargin"><number>12</number></property><property name="bottomMargin"><number>12</number></property>
+                  <item><widget class="QLabel" name="authorHint"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>选择作者后，可在下一步建立 A → B 的批量映射。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+                  <item><widget class="QTreeWidget" name="authorTree"><property name="alternatingRowColors"><bool>true</bool></property><property name="rootIsDecorated"><bool>false</bool></property><column><property name="text"><string>作者 / 邮箱</string></property></column><column><property name="text"><string>提交数</string></property></column></widget></item>
+                 </layout>
+                </widget>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="actionCard">
+             <layout class="QVBoxLayout" name="actionLayout">
+              <property name="spacing"><number>8</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>16</number></property>
+              <item><widget class="QLabel" name="actionTitle"><property name="text"><string>准备身份改写</string></property></widget></item>
+              <item><widget class="QLabel" name="actionText"><property name="text"><string>支持修改单条提交，或将作者 A 的全部记录映射为作者 B。执行前会生成新仓库副本并展示影响范围。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+              <item><spacer name="actionSpace"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>4</height></size></property></spacer></item>
+              <item><widget class="QPushButton" name="batchRewriteButton"><property name="enabled"><bool>false</bool></property><property name="role" stdset="0"><string>accent</string></property><property name="text"><string>创建改写方案  →</string></property></widget></item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
