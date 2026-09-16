@@ -1,7 +1,11 @@
 #include "mainwindow.h"
+#include "commitrewriter.h"
+#include "editcommitdialog.h"
 #include "ui_mainwindow.h"
 
+#include <QApplication>
 #include <QComboBox>
+#include <QDialog>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -9,6 +13,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QProcess>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QStyle>
 #include <QTreeWidget>
@@ -42,6 +47,7 @@ void MainWindow::connectSignals()
 {
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::chooseRepository);
     connect(ui->reloadButton, &QPushButton::clicked, this, &MainWindow::reloadRepository);
+    connect(ui->loadMoreButton, &QPushButton::clicked, this, &MainWindow::loadMoreCommits);
     connect(ui->pathEdit, &QLineEdit::returnPressed, this, [this] {
         setRepository(ui->pathEdit->text().trimmed());
     });
@@ -56,7 +62,7 @@ void MainWindow::connectSignals()
         m_currentBranch = branch;
         loadCommits();
     });
-    connect(ui->editCommitButton, &QPushButton::clicked, this, &MainWindow::showPrototypeNotice);
+    connect(ui->editCommitButton, &QPushButton::clicked, this, &MainWindow::editSelectedCommit);
     connect(ui->batchRewriteButton, &QPushButton::clicked, this, &MainWindow::showPrototypeNotice);
 }
 
@@ -118,6 +124,8 @@ void MainWindow::clearRepository(const QString &message)
     m_repositoryPath.clear();
     m_currentBranch.clear();
     m_authorCounts.clear();
+    m_loadedCommitCount = 0;
+    m_totalCommitCount = 0;
     ui->commitTree->clear();
     ui->authorTree->clear();
     ui->branchCombo->clear();
@@ -130,6 +138,7 @@ void MainWindow::clearRepository(const QString &message)
     ui->branchCombo->setEnabled(false);
     ui->batchRewriteButton->setEnabled(false);
     ui->editCommitButton->setEnabled(false);
+    updateCommitLoadControls();
     updateRepositoryBadge(false, tr("●  等待选择仓库"));
     showCommitDetails(nullptr);
 }
@@ -194,10 +203,48 @@ void MainWindow::loadCommits()
     ui->commitTree->clear();
     ui->authorTree->clear();
     m_authorCounts.clear();
+    m_loadedCommitCount = 0;
+    m_totalCommitCount = 0;
+
+    QStringList countArguments = {"rev-list", "--count"};
+    countArguments << (m_currentBranch.isEmpty() ? "--all" : m_currentBranch);
+    const GitResult countResult = runGit(countArguments);
+    bool countOk = false;
+    const qint64 totalCount = countResult.output.toLongLong(&countOk);
+    if (!countResult.ok || !countOk || totalCount < 0) {
+        clearRepository(countResult.error.isEmpty() ? tr("无法统计 Git 提交历史")
+                                                     : countResult.error);
+        return;
+    }
+
+    m_totalCommitCount = totalCount;
+    updateCommitLoadControls();
+
+    if (m_totalCommitCount == 0) {
+        ui->commitTree->setSortingEnabled(true);
+        updateStatistics();
+        showCommitDetails(nullptr);
+        return;
+    }
+
+    loadMoreCommits();
+}
+
+void MainWindow::loadMoreCommits()
+{
+    if (m_repositoryPath.isEmpty() || m_loadedCommitCount >= m_totalCommitCount) {
+        updateCommitLoadControls();
+        return;
+    }
+
+    ui->loadMoreButton->setEnabled(false);
+    ui->loadMoreButton->setText(tr("正在加载…"));
+    QApplication::processEvents();
 
     QStringList arguments = {
         "log",
-        "--max-count=1000",
+        QString("--max-count=%1").arg(CommitPageSize),
+        QString("--skip=%1").arg(m_loadedCommitCount),
         "--date=format:%Y-%m-%d %H:%M",
         "--pretty=format:%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%ad%x1f%cn%x1f%ce%x1e"
     };
@@ -205,11 +252,21 @@ void MainWindow::loadCommits()
 
     const GitResult history = runGit(arguments);
     if (!history.ok) {
-        clearRepository(history.error.isEmpty() ? tr("无法读取 Git 提交历史") : history.error);
+        updateCommitLoadControls();
+        const QString message = history.error.isEmpty() ? tr("无法读取更多 Git 提交历史")
+                                                        : history.error;
+        if (m_loadedCommitCount == 0) {
+            clearRepository(message);
+        } else {
+            QMessageBox::critical(this, tr("加载失败"), message);
+        }
         return;
     }
 
+    const bool selectFirstCommit = m_loadedCommitCount == 0;
+    ui->commitTree->setSortingEnabled(false);
     const QStringList records = history.output.split(QChar(0x1e), Qt::SkipEmptyParts);
+    qint64 appendedCount = 0;
     for (const QString &rawRecord : records) {
         const QString record = rawRecord.trimmed();
         if (record.isEmpty()) {
@@ -232,8 +289,31 @@ void MainWindow::loadCommits()
         item->setData(0, Qt::UserRole + 2, fields.at(7));
         const QString authorKey = QString("%1 <%2>").arg(fields.at(3), fields.at(4));
         m_authorCounts[authorKey] += 1;
+        ++appendedCount;
     }
 
+    m_loadedCommitCount += appendedCount;
+    if (appendedCount == 0 && m_loadedCommitCount < m_totalCommitCount) {
+        m_totalCommitCount = m_loadedCommitCount;
+    }
+
+    rebuildAuthorSummary();
+    ui->commitTree->setSortingEnabled(true);
+    ui->commitTree->sortItems(4, Qt::DescendingOrder);
+    updateStatistics();
+    updateCommitLoadControls();
+    filterCommits(ui->searchEdit->text());
+
+    if (selectFirstCommit && ui->commitTree->topLevelItemCount() > 0) {
+        ui->commitTree->setCurrentItem(ui->commitTree->topLevelItem(0));
+    } else if (ui->commitTree->topLevelItemCount() == 0) {
+        showCommitDetails(nullptr);
+    }
+}
+
+void MainWindow::rebuildAuthorSummary()
+{
+    ui->authorTree->clear();
     for (auto it = m_authorCounts.cbegin(); it != m_authorCounts.cend(); ++it) {
         auto *author = new QTreeWidgetItem(ui->authorTree);
         author->setText(0, it.key());
@@ -241,25 +321,49 @@ void MainWindow::loadCommits()
         author->setTextAlignment(1, Qt::AlignCenter);
     }
     ui->authorTree->sortItems(1, Qt::DescendingOrder);
-    ui->commitTree->setSortingEnabled(true);
-    ui->commitTree->sortItems(4, Qt::DescendingOrder);
-    updateStatistics();
-    filterCommits(ui->searchEdit->text());
+}
 
-    if (ui->commitTree->topLevelItemCount() > 0) {
-        ui->commitTree->setCurrentItem(ui->commitTree->topLevelItem(0));
+void MainWindow::updateCommitLoadControls()
+{
+    if (m_repositoryPath.isEmpty()) {
+        ui->loadProgressLabel->setText(tr("尚未加载提交"));
+        ui->loadMoreButton->setText(tr("加载更多"));
+        ui->loadMoreButton->setEnabled(false);
+        return;
+    }
+
+    ui->loadProgressLabel->setText(
+        tr("已加载 %1 / 共 %2 条提交").arg(m_loadedCommitCount).arg(m_totalCommitCount));
+    const bool hasMore = m_loadedCommitCount < m_totalCommitCount;
+    ui->loadMoreButton->setEnabled(hasMore);
+    if (hasMore) {
+        const qint64 remaining = m_totalCommitCount - m_loadedCommitCount;
+        ui->loadMoreButton->setText(
+            tr("加载更多（%1 条）").arg(qMin<qint64>(CommitPageSize, remaining)));
     } else {
-        showCommitDetails(nullptr);
+        ui->loadMoreButton->setText(tr("已全部加载"));
     }
 }
 
 void MainWindow::updateStatistics()
 {
-    ui->commitCountLabel->setText(QString::number(ui->commitTree->topLevelItemCount()));
+    ui->commitCountLabel->setText(
+        tr("%1 / %2").arg(m_loadedCommitCount).arg(m_totalCommitCount));
     ui->authorCountLabel->setText(QString::number(m_authorCounts.count()));
-    ui->repoMetaLabel->setText(tr("%1  ·  %2 位作者  ·  只读分析模式")
+    ui->repoMetaLabel->setText(tr("%1  ·  已加载 %2/%3 条  ·  %4 位作者")
                                    .arg(m_currentBranch.isEmpty() ? tr("游离 HEAD") : m_currentBranch)
+                                   .arg(m_loadedCommitCount)
+                                   .arg(m_totalCommitCount)
                                    .arg(m_authorCounts.count()));
+
+    if (m_loadedCommitCount < m_totalCommitCount) {
+        ui->authorHint->setText(
+            tr("当前作者统计基于已加载的 %1/%2 条提交；加载更多后会自动更新。")
+                .arg(m_loadedCommitCount)
+                .arg(m_totalCommitCount));
+    } else {
+        ui->authorHint->setText(tr("已统计当前分支的全部提交；可在下一步建立作者 A → B 的批量映射。"));
+    }
 }
 
 void MainWindow::updateRepositoryBadge(bool valid, const QString &text)
@@ -305,12 +409,152 @@ void MainWindow::showCommitDetails(QTreeWidgetItem *item)
     ui->editCommitButton->setEnabled(true);
 }
 
+void MainWindow::editSelectedCommit()
+{
+    QTreeWidgetItem *item = ui->commitTree->currentItem();
+    if (!item || m_repositoryPath.isEmpty()) {
+        QMessageBox::warning(this, tr("未选择提交"), tr("请先在提交历史中选择一条记录。"));
+        return;
+    }
+
+    if (m_currentBranch.isEmpty()) {
+        QMessageBox::warning(
+            this, tr("无法改写"),
+            tr("当前仓库处于游离 HEAD 状态。请先切换到一个本地分支，再重新加载仓库。"));
+        return;
+    }
+
+    const QString commitHash = item->data(0, Qt::UserRole).toString();
+    const GitResult messageResult = runGit({"show", "-s", "--format=%B", commitHash});
+    if (!messageResult.ok) {
+        QMessageBox::critical(
+            this, tr("读取提交失败"),
+            messageResult.error.isEmpty() ? tr("无法读取选定提交的完整说明。")
+                                          : messageResult.error);
+        return;
+    }
+
+    CommitEditData initialData;
+    initialData.hash = commitHash;
+    initialData.message = messageResult.output;
+    initialData.authorName = item->text(2);
+    initialData.authorEmail = item->text(3);
+    initialData.committerName = item->data(0, Qt::UserRole + 1).toString();
+    initialData.committerEmail = item->data(0, Qt::UserRole + 2).toString();
+
+    EditCommitDialog dialog(m_repositoryPath, initialData, this);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    const CommitEditData editedData = dialog.data();
+    const bool unchanged = editedData.message.trimmed() == initialData.message.trimmed()
+                           && editedData.authorName == initialData.authorName
+                           && editedData.authorEmail == initialData.authorEmail
+                           && editedData.committerName == initialData.committerName
+                           && editedData.committerEmail == initialData.committerEmail;
+    if (unchanged) {
+        QMessageBox::information(this, tr("没有需要改写的内容"),
+                                 tr("提交说明和身份信息均未发生变化。"));
+        return;
+    }
+
+    CommitRewriteRequest request;
+    request.mode = editedData.mode;
+    request.sourceRepository = m_repositoryPath;
+    request.branch = m_currentBranch;
+    request.commitHash = editedData.hash;
+    request.message = editedData.message;
+    request.authorName = editedData.authorName;
+    request.authorEmail = editedData.authorEmail;
+    request.committerName = editedData.committerName;
+    request.committerEmail = editedData.committerEmail;
+    request.outputDirectory = editedData.outputDirectory;
+    request.backupBundlePath = editedData.backupBundlePath;
+
+    QProgressDialog progress(tr("准备改写提交历史…"), tr("取消"), 0, 5, this);
+    progress.setWindowTitle(request.mode == RewriteMode::InPlace
+                                ? tr("正在修改当前仓库")
+                                : tr("正在生成修改副本"));
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(0);
+    progress.setAutoClose(false);
+    progress.setAutoReset(false);
+    progress.show();
+
+    const CommitRewriteResult result = CommitRewriter::rewrite(
+        request,
+        [&progress, &request](int step, int total, const QString &message) {
+            progress.setMaximum(total);
+            progress.setValue(step);
+            progress.setLabelText(message);
+            const bool destructiveInPlaceStep = request.mode == RewriteMode::InPlace && step >= 4;
+            if (destructiveInPlaceStep) {
+                progress.setCancelButton(nullptr);
+            }
+            QApplication::processEvents(QEventLoop::AllEvents, 50);
+            return destructiveInPlaceStep || !progress.wasCanceled();
+        });
+    progress.close();
+
+    if (result.canceled) {
+        QMessageBox::information(this, tr("操作已取消"),
+                                 tr("改写操作已取消，未修改原仓库。"));
+        return;
+    }
+    if (!result.ok) {
+        QString errorMessage = result.error;
+        if (request.mode == RewriteMode::InPlace && !result.backupBundlePath.isEmpty()) {
+            const QString nativeBackupPath = QDir::toNativeSeparators(result.backupBundlePath);
+            if (!errorMessage.contains(nativeBackupPath, Qt::CaseInsensitive)) {
+                errorMessage += tr("\n\n恢复备份：%1").arg(nativeBackupPath);
+            }
+        }
+        QMessageBox::critical(this, tr("改写失败"), errorMessage);
+        if (request.mode == RewriteMode::InPlace) {
+            setRepository(request.sourceRepository);
+        }
+        return;
+    }
+
+    if (request.mode == RewriteMode::InPlace) {
+        const QString successMessage = tr(
+            "选定提交已在当前仓库中完成改写并通过验证。\n\n"
+            "原提交：%1\n"
+            "新提交：%2\n"
+            "恢复备份：%3\n\n"
+            "远端仓库未修改。如果该分支曾经推送，请先检查新历史，再决定是否强制推送。")
+                                           .arg(request.commitHash,
+                                                result.newCommitHash,
+                                                QDir::toNativeSeparators(result.backupBundlePath));
+        setRepository(request.sourceRepository);
+        QMessageBox::information(this, tr("当前仓库改写成功"), successMessage);
+        return;
+    }
+
+    const QString successMessage = tr(
+        "选定提交已在新仓库副本中完成改写并通过验证。\n\n"
+        "原提交：%1\n"
+        "新提交：%2\n"
+        "副本目录：%3\n\n"
+        "原仓库和远端仓库均未修改。\n\n"
+        "是否立即加载新的仓库副本？")
+                                       .arg(request.commitHash,
+                                            result.newCommitHash,
+                                            QDir::toNativeSeparators(request.outputDirectory));
+    if (QMessageBox::question(this, tr("改写成功"), successMessage,
+                              QMessageBox::Yes | QMessageBox::No,
+                              QMessageBox::Yes)
+        == QMessageBox::Yes) {
+        setRepository(request.outputDirectory);
+    }
+}
+
 void MainWindow::showPrototypeNotice()
 {
     QMessageBox::information(
         this,
         tr("界面原型"),
-        tr("当前版本已完成仓库识别、历史读取、作者汇总和筛选。\n\n"
-           "下一步将设计改写方案编辑器，并复用现有脚本的安全副本流程；本原型不会修改任何 Git 历史。"));
+        tr("单条提交修改已经可用。\n\n"
+           "作者批量映射功能将在下一步实现；当前按钮不会修改任何 Git 历史。"));
 }
-

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditCommitDialog</class>
+ <widget class="QDialog" name="EditCommitDialog">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>700</width><height>800</height></rect></property>
+  <property name="minimumSize"><size><width>620</width><height>650</height></size></property>
+  <property name="windowTitle"><string>修改选定提交</string></property>
+  <property name="modal"><bool>true</bool></property>
+  <layout class="QVBoxLayout" name="dialogLayout">
+   <property name="spacing"><number>14</number></property><property name="leftMargin"><number>24</number></property><property name="topMargin"><number>22</number></property><property name="rightMargin"><number>24</number></property><property name="bottomMargin"><number>20</number></property>
+   <item><widget class="QLabel" name="dialogTitle"><property name="dialogTitle" stdset="0"><bool>true</bool></property><property name="text"><string>修改选定提交</string></property></widget></item>
+   <item><widget class="QLabel" name="dialogSubtitle"><property name="muted" stdset="0"><bool>true</bool></property><property name="text"><string>编辑提交说明及身份信息，并在独立副本中安全重写历史。</string></property></widget></item>
+   <item><widget class="QLabel" name="rewriteWarning"><property name="warning" stdset="0"><bool>true</bool></property><property name="text"><string>历史重写会改变该提交及其后续提交的哈希。原仓库不会被修改，也不会自动推送远端。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+   <item>
+    <widget class="QGroupBox" name="rewriteModeGroup">
+     <property name="title"><string>改写方式</string></property>
+     <layout class="QVBoxLayout" name="rewriteModeLayout">
+      <property name="spacing"><number>7</number></property><property name="leftMargin"><number>14</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>14</number></property><property name="bottomMargin"><number>12</number></property>
+      <item><widget class="QRadioButton" name="safeCopyRadio"><property name="text"><string>生成安全副本（推荐，不修改当前仓库）</string></property><property name="checked"><bool>true</bool></property></widget></item>
+      <item><widget class="QRadioButton" name="inPlaceRadio"><property name="text"><string>直接修改当前仓库（自动生成 .bundle 备份）</string></property></widget></item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="commitGroup">
+     <property name="title"><string>提交信息</string></property>
+     <layout class="QFormLayout" name="commitForm">
+      <property name="horizontalSpacing"><number>12</number></property><property name="verticalSpacing"><number>10</number></property><property name="leftMargin"><number>14</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>14</number></property><property name="bottomMargin"><number>14</number></property>
+      <item row="0" column="0"><widget class="QLabel" name="hashCaption"><property name="text"><string>原提交哈希</string></property></widget></item>
+      <item row="0" column="1"><widget class="QLineEdit" name="hashEdit"><property name="readOnly"><bool>true</bool></property></widget></item>
+      <item row="1" column="0"><widget class="QLabel" name="messageCaption"><property name="text"><string>提交说明</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set></property></widget></item>
+      <item row="1" column="1"><widget class="QPlainTextEdit" name="messageEdit"><property name="minimumSize"><size><width>0</width><height>105</height></size></property><property name="placeholderText"><string>输入新的提交说明</string></property></widget></item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="identityGroup">
+     <property name="title"><string>身份信息</string></property>
+     <layout class="QGridLayout" name="identityLayout">
+      <property name="horizontalSpacing"><number>12</number></property><property name="verticalSpacing"><number>10</number></property><property name="leftMargin"><number>14</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>14</number></property><property name="bottomMargin"><number>14</number></property>
+      <item row="0" column="0"><widget class="QLabel" name="authorHeading"><property name="identityHeading" stdset="0"><bool>true</bool></property><property name="text"><string>作者（原始修改人）</string></property></widget></item>
+      <item row="0" column="1"><widget class="QLabel" name="committerHeading"><property name="identityHeading" stdset="0"><bool>true</bool></property><property name="text"><string>提交者（写入历史的人）</string></property></widget></item>
+      <item row="1" column="0"><widget class="QLineEdit" name="authorNameEdit"><property name="placeholderText"><string>作者姓名</string></property></widget></item>
+      <item row="1" column="1"><widget class="QLineEdit" name="committerNameEdit"><property name="placeholderText"><string>提交者姓名</string></property></widget></item>
+      <item row="2" column="0"><widget class="QLineEdit" name="authorEmailEdit"><property name="placeholderText"><string>作者邮箱</string></property></widget></item>
+      <item row="2" column="1"><widget class="QLineEdit" name="committerEmailEdit"><property name="placeholderText"><string>提交者邮箱</string></property></widget></item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="outputGroup">
+     <property name="title"><string>新仓库副本</string></property>
+     <layout class="QHBoxLayout" name="outputLayout">
+      <property name="spacing"><number>10</number></property><property name="leftMargin"><number>14</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>14</number></property><property name="bottomMargin"><number>14</number></property>
+      <item><widget class="QLineEdit" name="outputPathEdit"><property name="placeholderText"><string>指定尚不存在的输出目录</string></property></widget></item>
+      <item><widget class="QPushButton" name="browseOutputButton"><property name="role" stdset="0"><string>secondary</string></property><property name="text"><string>选择位置</string></property></widget></item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="backupGroup">
+     <property name="title"><string>原地修改前的恢复备份</string></property>
+     <layout class="QHBoxLayout" name="backupLayout">
+      <property name="spacing"><number>10</number></property><property name="leftMargin"><number>14</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>14</number></property><property name="bottomMargin"><number>14</number></property>
+      <item><widget class="QLineEdit" name="backupPathEdit"><property name="placeholderText"><string>指定仓库外部尚不存在的 .bundle 文件</string></property></widget></item>
+      <item><widget class="QPushButton" name="browseBackupButton"><property name="role" stdset="0"><string>secondary</string></property><property name="text"><string>选择位置</string></property></widget></item>
+     </layout>
+    </widget>
+   </item>
+   <item><spacer name="dialogStretch"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>10</height></size></property></spacer></item>
+   <item><widget class="QDialogButtonBox" name="buttonBox"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="standardButtons"><set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set></property></widget></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

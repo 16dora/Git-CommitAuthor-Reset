@@ -8,6 +8,35 @@ QWidget#content {
     color: #1A2030;
 }
 
+QDialog#EditCommitDialog { background: #F7F8FC; color: #1A2030; }
+QLabel[dialogTitle="true"] { color: #171B27; font-size: 21px; font-weight: 750; }
+QLabel[warning="true"] {
+    color: #8B5B17;
+    background: #FFF5E3;
+    border: 1px solid #F2D7A9;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+QLabel[identityHeading="true"] { color: #4A5060; font-size: 12px; font-weight: 700; }
+QGroupBox {
+    color: #343A49;
+    background: #FFFFFF;
+    border: 1px solid #E2E5ED;
+    border-radius: 9px;
+    margin-top: 10px;
+    font-weight: 700;
+}
+QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 5px; }
+QPlainTextEdit {
+    color: #333847;
+    background: #FFFFFF;
+    border: 1px solid #DDE1EA;
+    border-radius: 7px;
+    padding: 7px;
+    selection-background-color: #6658E8;
+}
+QPlainTextEdit:focus { border: 1px solid #776AE9; }
+
 QLabel#pageTitle { font-size: 25px; font-weight: 750; color: #171B27; }
 QLabel[muted="true"] { color: #8A91A1; font-size: 12px; }
 
@@ -79,6 +108,23 @@ QPushButton#editCommitButton:disabled {
     background: #F2F0FC;
     border-color: #D5D0F2;
 }
+QPushButton#confirmRewriteButton {
+    color: #FFFFFF;
+    background: #6658E8;
+    border: 1px solid #6658E8;
+    min-width: 128px;
+    font-weight: 700;
+}
+QPushButton#confirmRewriteButton:hover { background: #5749D8; border-color: #5749D8; }
+QPushButton#confirmRewriteButton:pressed { background: #4638B8; border-color: #4638B8; }
+QPushButton#cancelRewriteButton {
+    color: #575D6C;
+    background: #FFFFFF;
+    border: 1px solid #DCE0E8;
+    min-width: 78px;
+    font-weight: 600;
+}
+QPushButton#cancelRewriteButton:hover { color: #5B4DD8; border-color: #8C82EA; }
 QLabel[sectionTitle="true"] { color: #252A37; font-size: 15px; font-weight: 700; }
 QFrame[divider="true"] { background: #EAECF1; border: none; }
 
@@ -93,6 +139,8 @@ QTreeWidget {
 QTreeWidget::item { min-height: 37px; border-bottom: 1px solid #F0F1F4; padding: 2px; }
 QTreeWidget::item:selected { background: #EFEDFF; color: #4F43BF; }
 QHeaderView::section { background: #F8F9FB; color: #8B91A0; border: none; border-bottom: 1px solid #E8EAF0; padding: 9px 7px; font-size: 11px; font-weight: 650; }
+QWidget#historyFooter { background: #FFFFFF; border-top: 1px solid #EAECF1; }
+QPushButton#loadMoreButton { min-width: 150px; }
 QTabWidget::pane { border: none; background: white; }
 QTabBar::tab { color: #8A90A0; background: white; border: none; padding: 13px 15px 10px; }
 QTabBar::tab:selected { color: #5C4CD8; font-weight: 700; border-bottom: 2px solid #6658E8; }

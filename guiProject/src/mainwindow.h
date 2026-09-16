@@ -22,8 +22,10 @@ public:
 private slots:
     void chooseRepository();
     void reloadRepository();
+    void loadMoreCommits();
     void filterCommits(const QString &text);
     void showCommitDetails(QTreeWidgetItem *item);
+    void editSelectedCommit();
     void showPrototypeNotice();
 
 private:
@@ -38,6 +40,8 @@ private:
     void clearRepository(const QString &message);
     void loadBranches();
     void loadCommits();
+    void rebuildAuthorSummary();
+    void updateCommitLoadControls();
     void updateStatistics();
     void updateRepositoryBadge(bool valid, const QString &text);
     QString findRepositoryRoot(QString path) const;
@@ -47,5 +51,8 @@ private:
     QString m_repositoryPath;
     QString m_currentBranch;
     QMap<QString, int> m_authorCounts;
-};
+    qint64 m_loadedCommitCount = 0;
+    qint64 m_totalCommitCount = 0;
 
+    static constexpr int CommitPageSize = 1000;
+};
