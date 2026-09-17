@@ -3,8 +3,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QProcess>
-#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 
@@ -17,7 +17,6 @@ static constexpr int PROCESS_START_TIMEOUT_MS = 5000;
 static constexpr int PROCESS_POLL_INTERVAL_MS = 100;
 static constexpr int PROCESS_TERMINATION_TIMEOUT_MS = 3000;
 static constexpr int DEFAULT_COMMAND_TIMEOUT_MS = 300000;
-static constexpr int FILTER_DETECTION_TIMEOUT_MS = 15000;
 static constexpr int VERIFY_COMMAND_TIMEOUT_MS = 30000;
 static constexpr int REWRITE_TOTAL_STEPS = 5;
 
@@ -26,25 +25,16 @@ struct CommandResult
 {
     bool isOk = false;
     bool isCanceled = false;
+    QByteArray rawOutput;
     QString output;
     QString error;
 };
 
-// 将任意 UTF-8 数据转换为安全的 Python bytes 表达式。
-QString pythonBytes(const QByteArray &value)
+// 判断提交头字段是否会在历史改写后失效。
+bool isInvalidatedCommitHeader(const QByteArray &line)
 {
-    if (value.isEmpty())
-    {
-        return "bytes()";
-    }
-
-    QStringList byteValues;
-    byteValues.reserve(value.size());
-    for (const char byte : value)
-    {
-        byteValues.append(QString::number(static_cast<unsigned char>(byte)));
-    }
-    return QString("bytes((%1))").arg(byteValues.join(','));
+    return line.startsWith("gpgsig ") || line.startsWith("gpgsig-sha256 ") ||
+           line.startsWith("mergetag ");
 }
 
 // 去除提交说明尾部换行，用于验证比较。
@@ -62,7 +52,8 @@ CommandResult runCommand(const QString &program, const QStringList &arguments,
                          const QString &workingDirectory, int step, int total, const QString &label,
                          const CommitRewriter::ProgressCallback &progress,
                          int timeoutMs = DEFAULT_COMMAND_TIMEOUT_MS,
-                         bool isCancellationAllowed = true)
+                         bool isCancellationAllowed = true,
+                         const QByteArray &standardInput = {})
 {
     CommandResult result;
     if (progress && !progress(step, total, label) && isCancellationAllowed)
@@ -82,6 +73,17 @@ CommandResult runCommand(const QString &program, const QStringList &arguments,
     {
         result.error = QString("无法启动命令：%1").arg(program);
         return result;
+    }
+    if (!standardInput.isEmpty())
+    {
+        if (process.write(standardInput) != standardInput.size())
+        {
+            process.kill();
+            process.waitForFinished(PROCESS_TERMINATION_TIMEOUT_MS);
+            result.error = QString("无法向命令写入数据：%1").arg(program);
+            return result;
+        }
+        process.closeWriteChannel();
     }
 
     int elapsedMs = 0;
@@ -104,7 +106,8 @@ CommandResult runCommand(const QString &program, const QStringList &arguments,
         }
     }
 
-    result.output = QString::fromUtf8(process.readAllStandardOutput());
+    result.rawOutput = process.readAllStandardOutput();
+    result.output = QString::fromUtf8(result.rawOutput);
     result.error = QString::fromUtf8(process.readAllStandardError()).trimmed();
     result.isOk = process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0;
     if (!result.isOk && result.error.isEmpty())
@@ -113,6 +116,139 @@ CommandResult runCommand(const QString &program, const QStringList &arguments,
             QString("命令执行失败：%1（退出码 %2）").arg(program).arg(process.exitCode());
     }
     return result;
+}
+
+// 在保留时间戳和时区的前提下替换提交身份字段。
+bool rewriteIdentityHeader(const QByteArray &line, const QByteArray &fieldPrefix,
+                           const QString &name, const QString &email, QByteArray &rewrittenLine)
+{
+    const qsizetype emailEndIndex = line.lastIndexOf('>');
+    const qsizetype emailStartIndex = line.lastIndexOf('<', emailEndIndex);
+    if (!line.startsWith(fieldPrefix) || emailStartIndex < fieldPrefix.size() ||
+        emailEndIndex <= emailStartIndex)
+    {
+        return false;
+    }
+
+    rewrittenLine = fieldPrefix + name.toUtf8() + " <" + email.toUtf8() + ">" +
+                    line.mid(emailEndIndex + 1);
+    return true;
+}
+
+// 重建单个提交对象，并按旧新哈希映射更新父提交引用。
+bool rewriteCommitObject(const QByteArray &originalObject, bool isTargetCommit,
+                         const CommitRewriteRequest &request,
+                         const QHash<QString, QString> &rewrittenHashes,
+                         QByteArray &rewrittenObject, QString &error)
+{
+    const qsizetype separatorIndex = originalObject.indexOf("\n\n");
+    if (separatorIndex < 0)
+    {
+        error = "提交对象缺少头部与说明分隔符。";
+        return false;
+    }
+
+    const QList<QByteArray> headerLines = originalObject.left(separatorIndex).split('\n');
+    bool hasChangedParent = false;
+    for (const QByteArray &line : headerLines)
+    {
+        if (!line.startsWith("parent "))
+        {
+            continue;
+        }
+        const QString parentHash = QString::fromLatin1(line.mid(7));
+        hasChangedParent = rewrittenHashes.contains(parentHash) &&
+                           rewrittenHashes.value(parentHash) != parentHash;
+        if (hasChangedParent)
+        {
+            break;
+        }
+    }
+
+    if (!isTargetCommit && !hasChangedParent)
+    {
+        rewrittenObject = originalObject;
+        return true;
+    }
+
+    QList<QByteArray> rewrittenHeaderLines;
+    rewrittenHeaderLines.reserve(headerLines.size());
+    bool hasAuthor = false;
+    bool hasCommitter = false;
+    for (qsizetype lineIndex = 0; lineIndex < headerLines.size(); ++lineIndex)
+    {
+        const QByteArray &line = headerLines.at(lineIndex);
+        if (isInvalidatedCommitHeader(line))
+        {
+            while (lineIndex + 1 < headerLines.size() &&
+                   headerLines.at(lineIndex + 1).startsWith(' '))
+            {
+                ++lineIndex;
+            }
+            continue;
+        }
+
+        if (line.startsWith("parent "))
+        {
+            const QString parentHash = QString::fromLatin1(line.mid(7));
+            rewrittenHeaderLines.append(
+                "parent " + rewrittenHashes.value(parentHash, parentHash).toLatin1());
+            continue;
+        }
+
+        if (isTargetCommit && line.startsWith("author "))
+        {
+            QByteArray rewrittenLine;
+            if (!rewriteIdentityHeader(line, "author ", request.authorName,
+                                       request.authorEmail, rewrittenLine))
+            {
+                error = "目标提交的作者字段格式无效。";
+                return false;
+            }
+            rewrittenHeaderLines.append(rewrittenLine);
+            hasAuthor = true;
+            continue;
+        }
+
+        if (isTargetCommit && line.startsWith("committer "))
+        {
+            QByteArray rewrittenLine;
+            if (!rewriteIdentityHeader(line, "committer ", request.committerName,
+                                       request.committerEmail, rewrittenLine))
+            {
+                error = "目标提交的提交者字段格式无效。";
+                return false;
+            }
+            rewrittenHeaderLines.append(rewrittenLine);
+            hasCommitter = true;
+            continue;
+        }
+
+        // 新说明统一按 UTF-8 写入，不能继续保留旧提交的编码声明。
+        if (isTargetCommit && line.startsWith("encoding "))
+        {
+            continue;
+        }
+        rewrittenHeaderLines.append(line);
+    }
+
+    if (isTargetCommit && (!hasAuthor || !hasCommitter))
+    {
+        error = "目标提交缺少作者或提交者字段。";
+        return false;
+    }
+
+    QByteArray message = originalObject.mid(separatorIndex + 2);
+    if (isTargetCommit)
+    {
+        message = request.message.toUtf8();
+        if (!message.endsWith('\n'))
+        {
+            message.append('\n');
+        }
+    }
+    rewrittenObject = rewrittenHeaderLines.join('\n') + "\n\n" + message;
+    return true;
 }
 
 // 判断目标路径是否位于指定目录内部。
@@ -225,59 +361,21 @@ CommitRewriteResult CommitRewriter::rewrite(const CommitRewriteRequest &request,
         }
     }
 
-    QString filterProgram;
-    QStringList filterPrefix;
-    QStringList detectionErrors;
+    const QString branchReference = QString("refs/heads/%1").arg(request.branch);
     CommandResult command;
-    const QString neutralWorkingDirectory = QDir::tempPath();
-    for (const QString &candidate : {QString("py"), QString("python"), QString("python3")})
+    command = runCommand(gitProgram,
+                         {"-c", QString("safe.directory=%1").arg(safeSource), "-C",
+                          request.sourceRepository, "merge-base", "--is-ancestor",
+                          request.commitHash, branchReference},
+                         request.sourceRepository, 1, REWRITE_TOTAL_STEPS,
+                         "正在检查目标提交与分支…", progress, VERIFY_COMMAND_TIMEOUT_MS);
+    if (command.isCanceled)
     {
-        const QString executable = QStandardPaths::findExecutable(candidate);
-        if (executable.isEmpty())
-        {
-            detectionErrors.append(QString("%1：未在 PATH 中找到").arg(candidate));
-            continue;
-        }
-
-        command =
-            runCommand(executable, {"-m", "git_filter_repo", "--version"}, neutralWorkingDirectory,
-                       1, REWRITE_TOTAL_STEPS, "正在检查 git-filter-repo 环境…", progress,
-                       FILTER_DETECTION_TIMEOUT_MS);
-        if (command.isCanceled)
-        {
-            return canceledResult();
-        }
-        if (command.isOk)
-        {
-            filterProgram = executable;
-            filterPrefix = {"-m", "git_filter_repo"};
-            break;
-        }
-        detectionErrors.append(QString("%1：%2").arg(executable, command.error));
+        return canceledResult();
     }
-
-    if (filterProgram.isEmpty())
+    if (!command.isOk)
     {
-        command = runCommand(gitProgram, {"filter-repo", "--version"}, neutralWorkingDirectory, 1,
-                             REWRITE_TOTAL_STEPS, "正在检查 git-filter-repo 环境…", progress,
-                             FILTER_DETECTION_TIMEOUT_MS);
-        if (command.isCanceled)
-        {
-            return canceledResult();
-        }
-        if (command.isOk)
-        {
-            filterProgram = gitProgram;
-            filterPrefix = {"filter-repo"};
-        }
-        else
-        {
-            detectionErrors.append(QString("git filter-repo：%1").arg(command.error));
-            return failedResult(QString("未检测到可用的 git-filter-repo。\n\n"
-                                        "请先执行：\npy -m pip install --user git-filter-repo\n\n"
-                                        "环境检查详情：\n%1")
-                                    .arg(detectionErrors.join('\n')));
-        }
+        return failedResult("所选提交不在目标分支中，未执行任何改写。");
     }
 
     QTemporaryDir temporaryDirectory;
@@ -354,21 +452,6 @@ CommitRewriteResult CommitRewriter::rewrite(const CommitRewriteRequest &request,
 
         command = runCommand(gitProgram,
                              {"-c", QString("safe.directory=%1").arg(safeSource), "-C",
-                              request.sourceRepository, "merge-base", "--is-ancestor",
-                              request.commitHash, request.branch},
-                             request.sourceRepository, 2, REWRITE_TOTAL_STEPS,
-                             "正在检查当前分支和工作区…", progress, VERIFY_COMMAND_TIMEOUT_MS);
-        if (command.isCanceled)
-        {
-            return canceledResult();
-        }
-        if (!command.isOk)
-        {
-            return failedResult("所选提交不在当前已检出分支中，未执行任何改写。");
-        }
-
-        command = runCommand(gitProgram,
-                             {"-c", QString("safe.directory=%1").arg(safeSource), "-C",
                               request.sourceRepository, "bundle", "create",
                               request.backupBundlePath, "--all"},
                              request.sourceRepository, 3, REWRITE_TOTAL_STEPS,
@@ -416,77 +499,142 @@ CommitRewriteResult CommitRewriter::rewrite(const CommitRewriteRequest &request,
         }
     }
 
-    QByteArray messageBytes = request.message.toUtf8();
-    if (!messageBytes.endsWith('\n'))
-    {
-        messageBytes.append('\n');
-    }
-    const QString callback = QString("target = b'%1'\n"
-                                     "if commit.original_id == target:\n"
-                                     "    commit.message = %2\n"
-                                     "    commit.author_name = %3\n"
-                                     "    commit.author_email = %4\n"
-                                     "    commit.committer_name = %5\n"
-                                     "    commit.committer_email = %6\n")
-                                 .arg(request.commitHash, pythonBytes(messageBytes),
-                                      pythonBytes(request.authorName.toUtf8()),
-                                      pythonBytes(request.authorEmail.toUtf8()),
-                                      pythonBytes(request.committerName.toUtf8()),
-                                      pythonBytes(request.committerEmail.toUtf8()));
-
-    QStringList filterArguments = filterPrefix;
-    filterArguments << "--force";
     if (isInPlace)
     {
         if (progress && !progress(3, REWRITE_TOTAL_STEPS, "备份已完成，即将开始修改当前仓库…"))
         {
             return canceledResult({}, request.backupBundlePath);
         }
-        filterArguments << "--refs" << QString("refs/heads/%1").arg(request.branch);
     }
-    filterArguments << "--commit-callback" << callback;
-    command =
-        runCommand(filterProgram, filterArguments, targetRepository, 4, REWRITE_TOTAL_STEPS,
-                   "正在改写选定提交及后续历史…", progress, DEFAULT_COMMAND_TIMEOUT_MS, !isInPlace);
+
+    command = runCommand(gitProgram,
+                         {"-c", QString("safe.directory=%1").arg(safeTarget), "-C",
+                          targetRepository, "rev-parse", "--verify",
+                          QString("%1^{commit}").arg(branchReference)},
+                         targetRepository, 4, REWRITE_TOTAL_STEPS,
+                         "正在读取目标分支历史…", progress, VERIFY_COMMAND_TIMEOUT_MS,
+                         !isInPlace);
     if (command.isCanceled)
     {
         return canceledResult(request.outputDirectory);
     }
     if (!command.isOk)
     {
-        if (isInPlace)
-        {
-            return failedResult(
-                QString("当前仓库改写失败。请停止后续 Git 操作，并使用备份检查或恢复：\n%1\n\n%2")
-                    .arg(QDir::toNativeSeparators(request.backupBundlePath), command.error),
-                request.backupBundlePath);
-        }
-        return failedResult(QString("提交历史改写失败。副本已保留以便检查：\n%1\n\n%2")
-                                .arg(request.outputDirectory, command.error));
+        return failedResult(QString("无法读取目标分支顶端：\n%1").arg(command.error),
+                            isInPlace ? request.backupBundlePath : QString());
     }
+    const QString originalBranchTip = command.output.trimmed();
 
-    const QString commitMapPath = QDir(targetRepository).filePath(".git/filter-repo/commit-map");
-    QFile commitMap(commitMapPath);
-    if (!commitMap.open(QIODevice::ReadOnly | QIODevice::Text))
+    const QString revisionRange = QString("%1..%2").arg(request.commitHash, branchReference);
+    command = runCommand(gitProgram,
+                         {"-c", QString("safe.directory=%1").arg(safeTarget), "-C",
+                          targetRepository, "rev-list", "--reverse", "--topo-order",
+                          "--ancestry-path", revisionRange},
+                         targetRepository, 4, REWRITE_TOTAL_STEPS,
+                         "正在计算需要重建的提交…", progress, VERIFY_COMMAND_TIMEOUT_MS,
+                         !isInPlace);
+    if (command.isCanceled)
     {
-        return failedResult(QString("无法读取改写结果映射：\n%1").arg(commitMapPath),
+        return canceledResult(request.outputDirectory);
+    }
+    if (!command.isOk)
+    {
+        return failedResult(QString("无法计算提交改写范围：\n%1").arg(command.error),
                             isInPlace ? request.backupBundlePath : QString());
     }
 
-    QString newCommitHash;
-    const QStringList mapLines = QString::fromUtf8(commitMap.readAll()).split('\n');
-    for (const QString &line : mapLines)
+    QStringList affectedCommitHashes = {request.commitHash};
+    const QStringList descendantHashes = command.output.split('\n', Qt::SkipEmptyParts);
+    for (const QString &descendantHash : descendantHashes)
     {
-        const QStringList fields = line.simplified().split(' ');
-        if (fields.size() >= 2 && fields.at(0) == request.commitHash)
+        const QString normalizedHash = descendantHash.trimmed();
+        if (!normalizedHash.isEmpty())
         {
-            newCommitHash = fields.at(1);
-            break;
+            affectedCommitHashes.append(normalizedHash);
         }
     }
-    if (newCommitHash.isEmpty() || newCommitHash == QString(40, '0'))
+
+    QHash<QString, QString> rewrittenHashes;
+    for (qsizetype commitIndex = 0; commitIndex < affectedCommitHashes.size(); ++commitIndex)
     {
-        return failedResult("改写完成，但无法在 commit-map 中找到目标提交的新哈希。",
+        const QString oldCommitHash = affectedCommitHashes.at(commitIndex);
+        const QString rewriteLabel =
+            QString("正在重建提交历史（%1/%2）…")
+                .arg(commitIndex + 1)
+                .arg(affectedCommitHashes.size());
+        command = runCommand(gitProgram,
+                             {"-c", QString("safe.directory=%1").arg(safeTarget), "-C",
+                              targetRepository, "cat-file", "commit", oldCommitHash},
+                             targetRepository, 4, REWRITE_TOTAL_STEPS, rewriteLabel, progress,
+                             DEFAULT_COMMAND_TIMEOUT_MS, !isInPlace);
+        if (command.isCanceled)
+        {
+            return canceledResult(request.outputDirectory);
+        }
+        if (!command.isOk)
+        {
+            return failedResult(
+                QString("读取提交对象失败（%1）：\n%2").arg(oldCommitHash, command.error),
+                isInPlace ? request.backupBundlePath : QString());
+        }
+
+        QByteArray rewrittenObject;
+        QString rewriteError;
+        if (!rewriteCommitObject(command.rawOutput, oldCommitHash == request.commitHash, request,
+                                 rewrittenHashes, rewrittenObject, rewriteError))
+        {
+            return failedResult(QString("重建提交对象失败（%1）：%2")
+                                    .arg(oldCommitHash, rewriteError),
+                                isInPlace ? request.backupBundlePath : QString());
+        }
+
+        if (rewrittenObject == command.rawOutput)
+        {
+            rewrittenHashes.insert(oldCommitHash, oldCommitHash);
+            continue;
+        }
+
+        command = runCommand(gitProgram,
+                             {"-c", QString("safe.directory=%1").arg(safeTarget), "-C",
+                              targetRepository, "hash-object", "-t", "commit", "-w", "--stdin"},
+                             targetRepository, 4, REWRITE_TOTAL_STEPS, rewriteLabel, progress,
+                             DEFAULT_COMMAND_TIMEOUT_MS, !isInPlace, rewrittenObject);
+        if (command.isCanceled)
+        {
+            return canceledResult(request.outputDirectory);
+        }
+        if (!command.isOk || command.output.trimmed().isEmpty())
+        {
+            return failedResult(
+                QString("写入提交对象失败（%1）：\n%2").arg(oldCommitHash, command.error),
+                isInPlace ? request.backupBundlePath : QString());
+        }
+        rewrittenHashes.insert(oldCommitHash, command.output.trimmed());
+    }
+
+    const QString newCommitHash = rewrittenHashes.value(request.commitHash);
+    const QString rewrittenBranchTip = rewrittenHashes.value(originalBranchTip);
+    if (newCommitHash.isEmpty() || rewrittenBranchTip.isEmpty())
+    {
+        return failedResult("改写完成，但无法确定目标提交或分支顶端的新哈希。",
+                            isInPlace ? request.backupBundlePath : QString());
+    }
+
+    command = runCommand(gitProgram,
+                         {"-c", QString("safe.directory=%1").arg(safeTarget), "-C",
+                          targetRepository, "update-ref", "-m",
+                          "Git Identity Studio rewrite", branchReference, rewrittenBranchTip,
+                          originalBranchTip},
+                         targetRepository, 4, REWRITE_TOTAL_STEPS,
+                         "正在更新目标分支引用…", progress, VERIFY_COMMAND_TIMEOUT_MS,
+                         !isInPlace);
+    if (command.isCanceled)
+    {
+        return canceledResult(request.outputDirectory);
+    }
+    if (!command.isOk)
+    {
+        return failedResult(QString("更新目标分支失败：\n%1").arg(command.error),
                             isInPlace ? request.backupBundlePath : QString());
     }
 

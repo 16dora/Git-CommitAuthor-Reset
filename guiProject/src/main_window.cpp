@@ -672,6 +672,7 @@ void MainWindow::editSelectedCommit()
                "原提交：%1\n"
                "新提交：%2\n"
                "恢复备份：%3\n\n"
+               "如果改写链路包含提交签名，失效签名已被移除。\n\n"
                "远端仓库未修改。如果该分支曾经推送，请先检查新历史，再决定是否强制推送。")
                 .arg(request.commitHash, result.newCommitHash,
                      QDir::toNativeSeparators(result.backupBundlePath));
@@ -686,6 +687,7 @@ void MainWindow::editSelectedCommit()
                                       "原提交：%1\n"
                                       "新提交：%2\n"
                                       "副本目录：%3\n\n"
+                                      "如果改写链路包含提交签名，失效签名已被移除。\n\n"
                                       "原仓库和远端仓库均未修改。\n\n"
                                       "是否立即加载新的仓库副本？")
                                        .arg(request.commitHash, result.newCommitHash,

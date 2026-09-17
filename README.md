@@ -87,7 +87,7 @@ E:\Qt\Qt6\Tools\mingw1310_64\bin
 - MinGW 13.1 64 位；
 - CMake 3.21 或更高版本；
 - Ninja；
-- 支持 C++17 的编译器。
+- 支持 C++20 的编译器。
 
 当前 `CMakePresets.json` 使用以下路径：
 
