@@ -174,7 +174,8 @@ void EditCommitDialog::updateModeUi()
         ui->dialogSubtitle->setText(
             tr("直接重写当前仓库的已检出分支，执行前会生成可恢复的 Git bundle。"));
         ui->rewriteWarning->setText(tr("高风险操作：当前分支将立即指向新历史，目标提交及后续提交的"
-                                       "哈希都可能改变。仅允许在工作区完全干净时执行。"));
+                                       "哈希都可能改变。暂存区存在已 add 的变更时禁止执行；"
+                                       "未暂存修改和未跟踪文件不会被备份。"));
     }
 }
 

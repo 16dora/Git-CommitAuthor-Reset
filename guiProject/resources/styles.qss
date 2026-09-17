@@ -147,12 +147,13 @@ QTabBar::tab:selected { color: #5C4CD8; font-weight: 700; border-bottom: 2px sol
 QLabel#detailSubject { color: #252A37; font-size: 15px; font-weight: 700; }
 QLabel[detailValue="true"] { color: #383E4D; font-size: 12px; }
 
-QFrame#actionCard { background: #29263F; border: none; border-radius: 11px; }
-QLabel#actionTitle { color: white; font-size: 14px; font-weight: 700; }
-QLabel#actionText { color: #BCB8D0; font-size: 11px; }
-QPushButton#batchRewriteButton { color: white; background: #7667F0; border: none; font-weight: 700; }
+QLabel#actionTitle { color: #252A37; font-size: 15px; font-weight: 700; }
+QLabel#actionText { color: #666D7D; font-size: 11px; }
+QWidget#authorActionHeader { background: #FFFFFF; }
+QWidget#batchActionFooter { background: #F8F7FF; border-top: 1px solid #E7E3FF; }
+QPushButton#batchRewriteButton { color: white; background: #7667F0; border: none; min-height: 38px; font-weight: 700; }
 QPushButton#batchRewriteButton:hover { background: #897CF4; }
-QPushButton#batchRewriteButton:disabled { color: #8F8AAB; background: #3A3651; }
+QPushButton#batchRewriteButton:disabled { color: #A39CC8; background: #E8E5F7; }
 QSplitter::handle { background: transparent; width: 12px; }
 QScrollBar:vertical { width: 10px; background: transparent; }
 QScrollBar::handle:vertical { background: #D6D9E2; border-radius: 5px; min-height: 30px; }

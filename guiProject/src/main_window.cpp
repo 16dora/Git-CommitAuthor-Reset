@@ -1,4 +1,5 @@
 #include "main_window.h"
+#include "batch_rewrite_dialog.h"
 #include "commit_rewriter.h"
 #include "edit_commit_dialog.h"
 #include "ui_mainwindow.h"
@@ -86,7 +87,8 @@ void MainWindow::connectSignals()
     connect(ui->branchCombo, &QComboBox::currentTextChanged, this,
             &MainWindow::handleBranchChanged);
     connect(ui->editCommitButton, &QPushButton::clicked, this, &MainWindow::editSelectedCommit);
-    connect(ui->batchRewriteButton, &QPushButton::clicked, this, &MainWindow::showPrototypeNotice);
+    connect(ui->batchRewriteButton, &QPushButton::clicked, this,
+            &MainWindow::openBatchRewriteDialog);
 }
 
 // 打开目录选择器并尝试加载选中仓库。
@@ -392,7 +394,7 @@ void MainWindow::loadMoreCommits()
         commitItemPtr->setData(0, Qt::UserRole, fields.at(0));
         commitItemPtr->setData(0, Qt::UserRole + 1, fields.at(6));
         commitItemPtr->setData(0, Qt::UserRole + 2, fields.at(7));
-        const QString authorKey = QString("%1 <%2>").arg(fields.at(3), fields.at(4));
+        const QString authorKey = fields.at(3) + QChar(0x1f) + fields.at(4);
         m_authorCounts[authorKey] += 1;
         ++appendedCount;
     }
@@ -430,9 +432,15 @@ void MainWindow::rebuildAuthorSummary()
     ui->authorTree->clear();
     for (auto it = m_authorCounts.cbegin(); it != m_authorCounts.cend(); ++it)
     {
+        const qsizetype separatorIndex = it.key().indexOf(QChar(0x1f));
+        const QString authorName = separatorIndex >= 0 ? it.key().left(separatorIndex) : it.key();
+        const QString authorEmail =
+            separatorIndex >= 0 ? it.key().mid(separatorIndex + 1) : QString();
         auto *authorItemPtr = new QTreeWidgetItem(ui->authorTree);
-        authorItemPtr->setText(0, it.key());
+        authorItemPtr->setText(0, QString("%1 <%2>").arg(authorName, authorEmail));
         authorItemPtr->setText(1, QString::number(it.value()));
+        authorItemPtr->setData(0, Qt::UserRole, authorName);
+        authorItemPtr->setData(0, Qt::UserRole + 1, authorEmail);
         authorItemPtr->setTextAlignment(1, Qt::AlignCenter);
     }
     ui->authorTree->sortItems(1, Qt::DescendingOrder);
@@ -722,12 +730,163 @@ bool MainWindow::canContinueRewrite(int step, int total, const QString &message)
     return isDestructiveInPlaceStep || !m_rewriteProgressDialogPtr->wasCanceled();
 }
 
-// 显示批量改写入口的当前实现状态。
-void MainWindow::showPrototypeNotice()
+// 打开批量身份窗口，并执行通过影响分析的改写请求。
+void MainWindow::openBatchRewriteDialog()
 {
-    QMessageBox::information(this, tr("界面原型"),
-                             tr("单条提交修改已经可用。\n\n"
-                                "作者批量映射功能将在下一步实现；当前按钮不会修改任何 Git 历史。"));
+    std::cout << "MainWindow::openBatchRewriteDialog() >>" << std::endl;
+    if (m_repositoryPath.isEmpty() || ui->branchCombo->count() == 0)
+    {
+        QMessageBox::warning(this, tr("仓库未就绪"), tr("请先加载包含本地分支的 Git 仓库。"));
+        std::cout << "MainWindow::openBatchRewriteDialog() <<"
+                  << " result=false reason=no-repository" << std::endl;
+        return;
+    }
+
+    QStringList branches;
+    for (int index = 0; index < ui->branchCombo->count(); ++index)
+    {
+        branches.append(ui->branchCombo->itemText(index));
+    }
+    QString initialName;
+    QString initialEmail;
+    if (QTreeWidgetItem *authorItemPtr = ui->authorTree->currentItem())
+    {
+        initialName = authorItemPtr->data(0, Qt::UserRole).toString();
+        initialEmail = authorItemPtr->data(0, Qt::UserRole + 1).toString();
+    }
+
+    BatchRewriteDialog dialog(m_repositoryPath, branches, m_currentBranch, initialName,
+                              initialEmail, this);
+    connect(&dialog, &BatchRewriteDialog::analysisRequested, this,
+            &MainWindow::analyzeBatchRewrite);
+    m_batchRewriteDialogPtr = &dialog;
+    const int dialogResult = dialog.exec();
+    m_batchRewriteDialogPtr = nullptr;
+    if (dialogResult != QDialog::Accepted)
+    {
+        std::cout << "MainWindow::openBatchRewriteDialog() <<"
+                  << " result=false reason=user-canceled-dialog" << std::endl;
+        return;
+    }
+
+    const BatchRewriteRequest request = dialog.request();
+    QProgressDialog progress(tr("准备批量改写身份…"), tr("取消"), 0, 6, this);
+    progress.setWindowTitle(request.mode == RewriteMode::InPlace
+                                ? tr("正在批量修改当前仓库")
+                                : tr("正在生成批量修改副本"));
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(0);
+    progress.setAutoClose(false);
+    progress.setAutoReset(false);
+    progress.show();
+
+    m_rewriteProgressDialogPtr = &progress;
+    m_isInPlaceRewriteActive = request.mode == RewriteMode::InPlace;
+    const CommitRewriter::ProgressCallback progressCallback =
+        std::bind(&MainWindow::canContinueRewrite, this, std::placeholders::_1,
+                  std::placeholders::_2, std::placeholders::_3);
+    const BatchRewriteResult result = CommitRewriter::rewriteBatch(request, progressCallback);
+    m_rewriteProgressDialogPtr = nullptr;
+    m_isInPlaceRewriteActive = false;
+    progress.close();
+
+    if (result.isCanceled)
+    {
+        QMessageBox::information(this, tr("操作已取消"), tr("批量身份改写已取消。"));
+        std::cout << "MainWindow::openBatchRewriteDialog() <<"
+                  << " result=false reason=rewrite-canceled" << std::endl;
+        return;
+    }
+    if (!result.isOk)
+    {
+        QString errorMessage = result.error;
+        if (request.mode == RewriteMode::InPlace && !result.backupBundlePath.isEmpty())
+        {
+            errorMessage += tr("\n\n恢复备份：%1")
+                                .arg(QDir::toNativeSeparators(result.backupBundlePath));
+            setRepository(request.sourceRepository);
+        }
+        QMessageBox::critical(this, tr("批量改写失败"), errorMessage);
+        std::cout << "MainWindow::openBatchRewriteDialog() <<"
+                  << " result=false reason=rewrite-failed" << std::endl;
+        return;
+    }
+
+    const QString rewrittenBranchNames = result.rewrittenBranches.join(tr("、"));
+    if (request.mode == RewriteMode::InPlace)
+    {
+        const QString successMessage =
+            tr("批量身份改写已完成并通过验证。\n\n"
+               "匹配提交：%1\n"
+               "实际重建提交：%2\n"
+               "已更新分支：%3\n"
+               "恢复备份：%4\n\n"
+               "如果改写链路包含提交签名，失效签名已被移除。远端仓库未修改。")
+                .arg(result.matchedCommitCount)
+                .arg(result.rebuiltCommitCount)
+                .arg(rewrittenBranchNames,
+                     QDir::toNativeSeparators(result.backupBundlePath));
+        setRepository(request.sourceRepository);
+        QMessageBox::information(this, tr("批量改写成功"), successMessage);
+        std::cout << "MainWindow::openBatchRewriteDialog() <<"
+                  << " result=true mode=in-place" << std::endl;
+        return;
+    }
+
+    const QString successMessage =
+        tr("批量身份改写已在完整仓库副本中完成并通过验证。\n\n"
+           "匹配提交：%1\n"
+           "实际重建提交：%2\n"
+           "已更新分支：%3\n"
+           "副本目录：%4\n\n"
+           "未选分支保留原历史，原仓库和远端仓库均未修改。是否立即加载副本？")
+            .arg(result.matchedCommitCount)
+            .arg(result.rebuiltCommitCount)
+            .arg(rewrittenBranchNames, QDir::toNativeSeparators(request.outputDirectory));
+    if (QMessageBox::question(this, tr("批量改写成功"), successMessage,
+                              QMessageBox::Yes | QMessageBox::No,
+                              QMessageBox::Yes) == QMessageBox::Yes)
+    {
+        setRepository(request.outputDirectory);
+    }
+    std::cout << "MainWindow::openBatchRewriteDialog() <<"
+              << " result=true mode=safe-copy" << std::endl;
+}
+
+// 在批量窗口保持打开时执行只读影响分析。
+void MainWindow::analyzeBatchRewrite()
+{
+    std::cout << "MainWindow::analyzeBatchRewrite() >>" << std::endl;
+    if (!m_batchRewriteDialogPtr)
+    {
+        std::cout << "MainWindow::analyzeBatchRewrite() <<"
+                  << " result=false reason=no-dialog" << std::endl;
+        return;
+    }
+
+    const BatchRewriteRequest request = m_batchRewriteDialogPtr->request();
+    QProgressDialog progress(tr("正在分析身份影响…"), tr("取消"), 0, 2,
+                             m_batchRewriteDialogPtr);
+    progress.setWindowTitle(tr("分析批量改写影响"));
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(0);
+    progress.setAutoClose(false);
+    progress.setAutoReset(false);
+    progress.show();
+
+    m_rewriteProgressDialogPtr = &progress;
+    m_isInPlaceRewriteActive = false;
+    const CommitRewriter::ProgressCallback progressCallback =
+        std::bind(&MainWindow::canContinueRewrite, this, std::placeholders::_1,
+                  std::placeholders::_2, std::placeholders::_3);
+    const BatchRewriteAnalysis analysis =
+        CommitRewriter::analyzeBatch(request, progressCallback);
+    m_rewriteProgressDialogPtr = nullptr;
+    progress.close();
+    m_batchRewriteDialogPtr->setAnalysisResult(analysis);
+    std::cout << "MainWindow::analyzeBatchRewrite() <<"
+              << " result=" << analysis.isOk
+              << " uniqueCommitCount=" << analysis.uniqueCommitCount << std::endl;
 }
 
 // 保存主窗口截图并结束自动截图流程。

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(GitIdentityStudio VERSION 0.1.0 LANGUAGES CXX)
+project(Git-Commit-RewriterGUI VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,26 +14,29 @@ find_package(Qt6 6.11 REQUIRED COMPONENTS Widgets)
 
 include(CTest)
 
-qt_add_executable(GitIdentityStudio WIN32
+qt_add_executable(Git-Commit-RewriterGUI WIN32
     src/main.cpp
     src/main_window.cpp
     src/main_window.h
     src/edit_commit_dialog.cpp
     src/edit_commit_dialog.h
+    src/batch_rewrite_dialog.cpp
+    src/batch_rewrite_dialog.h
     src/commit_rewriter.cpp
     src/commit_rewriter.h
     ui/mainwindow.ui
     ui/editcommitdialog.ui
+    ui/batchrewritedialog.ui
     resources/resources.qrc
 )
 
-target_link_libraries(GitIdentityStudio PRIVATE Qt6::Widgets)
+target_link_libraries(Git-Commit-RewriterGUI PRIVATE Qt6::Widgets)
 
 if(MSVC)
-    target_compile_options(GitIdentityStudio PRIVATE /utf-8)
+    target_compile_options(Git-Commit-RewriterGUI PRIVATE /utf-8)
 endif()
 
-set_target_properties(GitIdentityStudio PROPERTIES
+set_target_properties(Git-Commit-RewriterGUI PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
 )

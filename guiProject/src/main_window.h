@@ -7,6 +7,7 @@
 
 class QProgressDialog;
 class QTreeWidgetItem;
+class BatchRewriteDialog;
 
 namespace Ui
 {
@@ -46,8 +47,10 @@ private slots:
     void showCommitDetails(QTreeWidgetItem *itemPtr);
     // 打开单提交修改流程。
     void editSelectedCommit();
-    // 显示尚未实现的批量改写功能说明。
-    void showPrototypeNotice();
+    // 打开批量身份改写窗口并执行已确认的请求。
+    void openBatchRewriteDialog();
+    // 响应批量窗口请求，分析选中分支的身份影响。
+    void analyzeBatchRewrite();
     // 保存主窗口截图并退出应用。
     void captureMainWindowScreenshot();
     // 触发编辑对话框，用于自动截图。
@@ -105,6 +108,8 @@ private:
     qint64 m_totalCommitCount = 0;
     // 当前改写进度对话框，仅在改写调用期间有效。
     QProgressDialog *m_rewriteProgressDialogPtr = nullptr;
+    // 当前打开的批量改写窗口，仅在模态调用期间有效。
+    BatchRewriteDialog *m_batchRewriteDialogPtr = nullptr;
     // 当前是否正在执行原地改写。
     bool m_isInPlaceRewriteActive = false;
     // 命令行指定的主窗口截图路径。

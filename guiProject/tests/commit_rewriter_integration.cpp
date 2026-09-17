@@ -236,8 +236,27 @@ int main(int argc, char *argv[])
         return fail("Recovery bundle did not restore the original history");
     }
 
-    const QString rejectedBackup =
-        QDir(temporaryDirectory.path()).filePath("dirty-rejected.bundle");
+    QFile trackedFile(QDir(inPlaceRepository).filePath("tracked.txt"));
+    if (!trackedFile.open(QIODevice::WriteOnly | QIODevice::Text) ||
+        trackedFile.write("tracked baseline\n") < 0)
+    {
+        return fail("Could not create tracked-file fixture");
+    }
+    trackedFile.close();
+    if (!git(inPlaceRepository, {"add", "--", "tracked.txt"}).isOk ||
+        !hasCreatedCommit(inPlaceRepository, "Track worktree fixture"))
+    {
+        return fail("Could not commit tracked-file fixture");
+    }
+    if (!trackedFile.open(QIODevice::WriteOnly | QIODevice::Text) ||
+        trackedFile.write("unstaged content must remain untouched\n") < 0)
+    {
+        return fail("Could not create unstaged-change fixture");
+    }
+    trackedFile.close();
+
+    const QString worktreeAllowedBackup =
+        QDir(temporaryDirectory.path()).filePath("worktree-allowed.bundle");
     QFile untrackedFile(QDir(inPlaceRepository).filePath("untracked.txt"));
     if (!untrackedFile.open(QIODevice::WriteOnly | QIODevice::Text) ||
         untrackedFile.write("must remain untouched\n") < 0)
@@ -245,19 +264,44 @@ int main(int argc, char *argv[])
         return fail("Could not create dirty-worktree fixture");
     }
     untrackedFile.close();
+    CommitRewriteRequest untrackedRequest = inPlaceRequest;
+    untrackedRequest.commitHash = inPlaceResult.newCommitHash;
+    untrackedRequest.message = "Rewrite while unstaged worktree changes exist";
+    untrackedRequest.backupBundlePath = worktreeAllowedBackup;
+    const CommitRewriteResult untrackedResult = CommitRewriter::rewrite(untrackedRequest);
+    if (!untrackedResult.isOk || !QFileInfo::exists(worktreeAllowedBackup) ||
+        !QFileInfo::exists(untrackedFile.fileName()))
+    {
+        return fail("Unstaged worktree changes unexpectedly blocked in-place rewrite");
+    }
+    if (!trackedFile.open(QIODevice::ReadOnly | QIODevice::Text) ||
+        trackedFile.readAll() != "unstaged content must remain untouched\n")
+    {
+        return fail("Unstaged tracked-file content was not preserved");
+    }
+    trackedFile.close();
+
+    if (!git(inPlaceRepository, {"add", "--", "untracked.txt"}).isOk)
+    {
+        return fail("Could not create staged-change fixture");
+    }
+    const QString stagedRejectedBackup =
+        QDir(temporaryDirectory.path()).filePath("staged-rejected.bundle");
     const QString tipBeforeRejectedRewrite = git(inPlaceRepository, {"rev-parse", "HEAD"}).output;
-    CommitRewriteRequest dirtyRequest = inPlaceRequest;
-    dirtyRequest.commitHash = inPlaceResult.newCommitHash;
-    dirtyRequest.backupBundlePath = rejectedBackup;
-    const CommitRewriteResult dirtyResult = CommitRewriter::rewrite(dirtyRequest);
-    if (dirtyResult.isOk || !dirtyResult.error.contains("未提交或未跟踪") ||
-        QFileInfo::exists(rejectedBackup) ||
+    CommitRewriteRequest stagedRequest = inPlaceRequest;
+    stagedRequest.commitHash = untrackedResult.newCommitHash;
+    stagedRequest.message = "This rewrite must be rejected";
+    stagedRequest.backupBundlePath = stagedRejectedBackup;
+    const CommitRewriteResult stagedResult = CommitRewriter::rewrite(stagedRequest);
+    if (stagedResult.isOk || !stagedResult.error.contains("暂存区") ||
+        QFileInfo::exists(stagedRejectedBackup) ||
         git(inPlaceRepository, {"rev-parse", "HEAD"}).output != tipBeforeRejectedRewrite)
     {
-        return fail("Dirty worktree was not rejected safely");
+        return fail("Staged change was not rejected safely");
     }
 
-    qInfo().noquote() << "Safe-copy and in-place commit rewrite integration tests passed";
+    qInfo().noquote()
+        << "Safe-copy, in-place, worktree and staged-change integration tests passed";
     std::cout << "main() <<"
               << " result=0" << std::endl;
     return 0;

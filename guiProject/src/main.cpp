@@ -20,8 +20,8 @@ int main(int argc, char *argv[])
     std::cout << "main() >>" << std::endl;
 
     QApplication app(argc, argv);
-    QApplication::setApplicationName("Git Identity Studio");
-    QApplication::setOrganizationName("Git Identity Studio");
+    QApplication::setApplicationName("Git-Commit-RewriterGUI");
+    QApplication::setOrganizationName("Git-Commit-RewriterGUI");
 
     QFont font("Microsoft YaHei UI");
     font.setPixelSize(APPLICATION_FONT_PIXEL_SIZE);
