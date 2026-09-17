@@ -30,6 +30,18 @@ qt_add_executable(Git-Commit-RewriterGUI WIN32
     resources/resources.qrc
 )
 
+if(WIN32)
+    set(APP_ICON_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/iconic/mainicon.ico")
+    configure_file(
+        resources/windows/app_icon.rc.in
+        "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc"
+        @ONLY
+    )
+    target_sources(Git-Commit-RewriterGUI PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc"
+    )
+endif()
+
 target_link_libraries(Git-Commit-RewriterGUI PRIVATE Qt6::Widgets)
 
 if(MSVC)

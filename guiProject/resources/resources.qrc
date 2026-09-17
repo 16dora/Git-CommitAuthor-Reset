@@ -1,4 +1,7 @@
 <RCC>
+    <qresource prefix="/icons">
+        <file alias="mainicon.png">iconic/mainicon.png</file>
+    </qresource>
     <qresource prefix="/styles">
         <file alias="styles.qss">styles.qss</file>
     </qresource>

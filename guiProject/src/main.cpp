@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFont>
+#include <QIcon>
 
 #include <iostream>
 
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName("Git-Commit-RewriterGUI");
     QApplication::setOrganizationName("Git-Commit-RewriterGUI");
+    QApplication::setWindowIcon(QIcon(":/icons/mainicon.png"));
 
     QFont font("Microsoft YaHei UI");
     font.setPixelSize(APPLICATION_FONT_PIXEL_SIZE);
