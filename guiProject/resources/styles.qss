@@ -125,6 +125,62 @@ QPushButton#cancelRewriteButton {
     font-weight: 600;
 }
 QPushButton#cancelRewriteButton:hover { color: #5B4DD8; border-color: #8C82EA; }
+QPushButton#btn_executeBatchRewrite {
+    color: #FFFFFF;
+    background: #5A45D6;
+    border: 2px solid #5A45D6;
+    min-width: 138px;
+    min-height: 38px;
+    font-weight: 750;
+}
+QPushButton#btn_executeBatchRewrite:hover {
+    background: #4935C0;
+    border-color: #4935C0;
+}
+QPushButton#btn_executeBatchRewrite:pressed {
+    background: #3826A7;
+    border-color: #3826A7;
+}
+QPushButton#btn_executeBatchRewrite:focus { border-color: #21136F; }
+QPushButton#btn_executeBatchRewrite:disabled {
+    color: #8D86B8;
+    background: #E7E3F7;
+    border-color: #CEC7EA;
+}
+QPushButton#btn_cancelBatchRewrite {
+    color: #FFFFFF;
+    background: #475569;
+    border: 2px solid #475569;
+    min-width: 88px;
+    min-height: 38px;
+    font-weight: 700;
+}
+QPushButton#btn_cancelBatchRewrite:hover {
+    background: #334155;
+    border-color: #334155;
+}
+QPushButton#btn_cancelBatchRewrite:pressed {
+    background: #1E293B;
+    border-color: #1E293B;
+}
+QPushButton#btn_cancelBatchRewrite:focus { border-color: #0F172A; }
+QProgressDialog QPushButton {
+    color: #FFFFFF;
+    background: #C2410C;
+    border: 2px solid #C2410C;
+    min-width: 88px;
+    min-height: 36px;
+    font-weight: 700;
+}
+QProgressDialog QPushButton:hover {
+    background: #9A3412;
+    border-color: #9A3412;
+}
+QProgressDialog QPushButton:pressed {
+    background: #7C2D12;
+    border-color: #7C2D12;
+}
+QProgressDialog QPushButton:focus { border-color: #431407; }
 QLabel[sectionTitle="true"] { color: #252A37; font-size: 15px; font-weight: 700; }
 QFrame[divider="true"] { background: #EAECF1; border: none; }
 

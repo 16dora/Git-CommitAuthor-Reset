@@ -14,6 +14,7 @@
 #include <QRadioButton>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QStyle>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 
@@ -100,6 +101,13 @@ BatchRewriteDialog::BatchRewriteDialog(const QString &repositoryPath, const QStr
     QPushButton *cancelButtonPtr = ui->buttonBox->button(QDialogButtonBox::Cancel);
     cancelButtonPtr->setText(tr("取消"));
     cancelButtonPtr->setObjectName("btn_cancelBatchRewrite");
+    // 标准按钮在 setupUi 后才命名，需要立即刷新以应用专用颜色。
+    for (QPushButton *buttonPtr : {executeButtonPtr, cancelButtonPtr})
+    {
+        buttonPtr->style()->unpolish(buttonPtr);
+        buttonPtr->style()->polish(buttonPtr);
+        buttonPtr->update();
+    }
 
     connect(ui->btn_browseOutput, &QPushButton::clicked, this,
             &BatchRewriteDialog::chooseOutputParent);
