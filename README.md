@@ -1,6 +1,6 @@
 # Git-Commit-RewriterGUI
 
-Git-Commit-RewriterGUI 是一个基于 Qt 6 Widgets 的本地 Git 历史查看与改写工具。它通过 Git 原生命令读取和重建提交对象，不依赖 Python、`git-filter-repo` 或其他 Python 模块。
+Git-Commit-RewriterGUI 是一个基于 Qt 6 Widgets 的本地 Git 历史查看与改写工具。它通过 Git 原生命令读取和重建提交对象，不依赖其他模块。
 
 软件默认使用“生成安全副本”模式，让用户先在独立仓库中检查改写结果；如确需直接修改当前仓库，也可以在创建 `.bundle` 恢复备份后执行。
 
@@ -105,14 +105,6 @@ build/qt6-mingw-debug/Git-Commit-RewriterGUI.exe
 ```
 
 也可以使用 Qt Creator 直接打开 `CMakeLists.txt`。
-
-## 测试
-
-```powershell
-ctest --test-dir build/qt6-mingw-debug --output-on-failure
-```
-
-当前集成测试覆盖单条提交的安全副本改写、原地改写、后续提交重建、`.bundle` 恢复、未暂存工作区内容保留以及暂存区变更拒绝。
 
 ## 从 bundle 检查历史
 
