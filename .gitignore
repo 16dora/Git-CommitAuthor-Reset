@@ -40,6 +40,9 @@ CMakeUserPresets.json
 .clion*
 .cache
 .qtcreator
+agentStart.md
+code-plan/
+codingStandard/
 
 # Qoder AI development rules
 .qoder/
